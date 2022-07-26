@@ -186,8 +186,8 @@ class OCSort(object):
         self.det_thresh = det_thresh
         self.delta_t = delta_t
         self.asso_func = ASSO_FUNCS[asso_func]
-        self.inertia = inertia
-        self.use_byte = use_byte
+        self.inertia = inertia                  # 惯性
+        self.use_byte = use_byte                # false 
         KalmanBoxTracker.count = 0
 
     def update(self, output_results, img_info, img_size):
@@ -198,7 +198,7 @@ class OCSort(object):
         Returns the a similar array, where the last column is the object ID.
         NOTE: The number of objects returned may differ from the number of detections provided.
         """
-        if output_results is None:
+        if output_results is None:      # if there is not detection result, return None
             return np.empty((0, 5))
 
         self.frame_count += 1
@@ -207,7 +207,7 @@ class OCSort(object):
             scores = output_results[:, 4]
             bboxes = output_results[:, :4]
         else:
-            output_results = output_results.cpu().numpy()
+            output_results = output_results.cpu().numpy()           # x1y1x2y2 obj_conf class_conf class
             scores = output_results[:, 4] * output_results[:, 5]
             bboxes = output_results[:, :4]  # x1y1x2y2
         img_h, img_w = img_info[0], img_info[1]
@@ -217,12 +217,12 @@ class OCSort(object):
         inds_low = scores > 0.1
         inds_high = scores < self.det_thresh
         inds_second = np.logical_and(inds_low, inds_high)  # self.det_thresh > score > 0.1, for second matching
-        dets_second = dets[inds_second]  # detections for second matching
+        dets_second = dets[inds_second]  # detections for second matching (BYTE) 
         remain_inds = scores > self.det_thresh
         dets = dets[remain_inds]
 
         # get predicted locations from existing trackers.
-        trks = np.zeros((len(self.trackers), 5))
+        trks = np.zeros((len(self.trackers), 5))        # tracker's predict bbox
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
@@ -230,8 +230,8 @@ class OCSort(object):
             trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
             if np.any(np.isnan(pos)):
                 to_del.append(t)
-        trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
-        for t in reversed(to_del):
+        trks = np.ma.compress_rows(np.ma.masked_invalid(trks))      # delete Nan trks
+        for t in reversed(to_del):      # delete Nan trackers
             self.trackers.pop(t)
 
         velocities = np.array(
