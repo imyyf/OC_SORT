@@ -246,7 +246,7 @@ class OCSort(object):
         matched, unmatched_dets, unmatched_trks = associate(
             dets, trks, self.iou_threshold, velocities, k_observations, self.inertia)
         for m in matched:
-            self.trackers[m[1]].update(dets[m[0], :])
+            self.trackers[m[1]].update(dets[m[0], :])       # update with estimation and observation(detection)
 
         """
             Second round of associaton by OCR
@@ -272,10 +272,10 @@ class OCSort(object):
                     to_remove_trk_indices.append(trk_ind)
                 unmatched_trks = np.setdiff1d(unmatched_trks, np.array(to_remove_trk_indices))
 
-        if unmatched_dets.shape[0] > 0 and unmatched_trks.shape[0] > 0:
+        if unmatched_dets.shape[0] > 0 and unmatched_trks.shape[0] > 0:     # OCR
             left_dets = dets[unmatched_dets]
             left_trks = last_boxes[unmatched_trks]
-            iou_left = self.asso_func(left_dets, left_trks)
+            iou_left = self.asso_func(left_dets, left_trks)     # iou_match
             iou_left = np.array(iou_left)
             if iou_left.max() > self.iou_threshold:
                 """
@@ -283,7 +283,7 @@ class OCSort(object):
                     get a higher performance especially on MOT17/MOT20 datasets. But we keep it
                     uniform here for simplicity
                 """
-                rematched_indices = linear_assignment(-iou_left)
+                rematched_indices = linear_assignment(-iou_left)        # hungarian algorithm
                 to_remove_det_indices = []
                 to_remove_trk_indices = []
                 for m in rematched_indices:
@@ -293,11 +293,11 @@ class OCSort(object):
                     self.trackers[trk_ind].update(dets[det_ind, :])
                     to_remove_det_indices.append(det_ind)
                     to_remove_trk_indices.append(trk_ind)
-                unmatched_dets = np.setdiff1d(unmatched_dets, np.array(to_remove_det_indices))
+                unmatched_dets = np.setdiff1d(unmatched_dets, np.array(to_remove_det_indices))      # remove matached
                 unmatched_trks = np.setdiff1d(unmatched_trks, np.array(to_remove_trk_indices))
 
         for m in unmatched_trks:
-            self.trackers[m].update(None)
+            self.trackers[m].update(None)       # oos
 
         # create and initialise new trackers for unmatched detections
         for i in unmatched_dets:
@@ -306,7 +306,7 @@ class OCSort(object):
         i = len(self.trackers)
         for trk in reversed(self.trackers):
             if trk.last_observation.sum() < 0:
-                d = trk.get_state()[0]
+                d = trk.get_state()[0]      # Returns the current bounding box estimate
             else:
                 """
                     this is optional to use the recent observation or the kalman filter prediction,
@@ -315,6 +315,9 @@ class OCSort(object):
                 d = trk.last_observation[:4]
             if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
                 # +1 as MOT benchmark requires positive
+                # condition1 update this iter with obsrvation 
+                # condition2.1 continuously success tracking > minimum tracking times 
+                # condition2.2 seq frames < minimum tracking times
                 ret.append(np.concatenate((d, [trk.id+1])).reshape(1, -1))
             i -= 1
             # remove dead tracklet
