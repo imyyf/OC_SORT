@@ -98,7 +98,7 @@ class KalmanBoxTracker(object):
         """
         self.last_observation = np.array([-1, -1, -1, -1, -1])  # placeholder
         self.observations = dict()
-        self.history_observations = []
+        self.history_observations = []      # use only for OCSort.update_public
         self.velocity = None
         self.delta_t = delta_t
 
